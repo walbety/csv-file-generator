@@ -2,57 +2,48 @@ package main
 
 import (
 	"fmt"
-	"log"
+	"github.com/google/uuid"
+	log "github.com/sirupsen/logrus"
+	"github.com/walbety/csv-file-generator/canonical"
+	"github.com/walbety/csv-file-generator/config"
 	"math/rand"
 	"os"
-
-	"github.com/google/uuid"
+	"time"
 )
 
 type Field struct {
 	name string
-	Type FieldType
+	Type canonical.FieldType
 	Size int
 }
-
-type (
-	FieldType string
-)
 
 var (
 	letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
 	numberRunes = []rune("1234567890")
 )
 
-const (
-	UUID      FieldType = "UUID"
-	Number    FieldType = "NUMBER"
-	Date      FieldType = "DATE"
-	Timestamp FieldType = "TIMESTAMP"
-	Text      FieldType = "TEXT"
-	Float     FieldType = "FLOAT"
-
-	MAX_LINES = 170
-	// MAX_LINES = 17000
-)
-
 func main() {
+	err := config.InitConfigs()
+	if err != nil {
+		log.WithError(err).Error("Error at initConfig")
+	}
 	fields := make(map[int]Field, 10)
 	i := 0
 
-	i = addFieldToMap(fields, "paymentId", Text, 34, i)
-	i = addFieldToMap(fields, "TID", UUID, 34, i)
-	i = addFieldToMap(fields, "NSU", Number, 10, i)
-	i = addFieldToMap(fields, "Date", Date, 10, i)
-	i = addFieldToMap(fields, "PaymentDate", Date, 10, i)
-	i = addFieldToMap(fields, "AuthCode", Number, 16, i)
-	i = addFieldToMap(fields, "CNPJ", Number, 14, i)
-	i = addFieldToMap(fields, "ValorTransacao", Float, 5, i)
-	i = addFieldToMap(fields, "ValorParcela", Float, 5, i)
-	i = addFieldToMap(fields, "Bandeira", Text, 14, i)
-	i = addFieldToMap(fields, "CNPJ", Text, 14, i)
+	for _, field := range config.Cfg.Fields {
+		fieldType, ok := canonical.MapFileTypeStringToConst[field.Type]
+		if ok {
+			i = addFieldToMap(fields, field.Name, fieldType, field.Size, i)
+		} else {
+			log.Errorf("This type is unsuported: %s", field.Type)
+		}
+	}
 
-	f, err := os.Create("saida.txt")
+	filename := "saida.csv"
+	if config.Cfg.Filename != "" {
+		filename = config.Cfg.Filename
+	}
+	f, err := os.Create(fmt.Sprintf("%s.csv", filename))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -63,16 +54,19 @@ func main() {
 		log.Fatal(err2)
 	}
 
-	for i := 0; i < MAX_LINES; i++ {
+	for i := 0; i < config.Cfg.TotalLines; i++ {
 		_, err := f.WriteString(generateLine(fields))
 		if err != nil {
 			log.Fatal(err)
 		}
 	}
 
+	log.Info("file created!!")
+	time.Sleep(time.Second * 3)
+
 }
 
-func addFieldToMap(fields map[int]Field, name string, Type FieldType, size int, index int) int {
+func addFieldToMap(fields map[int]Field, name string, Type canonical.FieldType, size int, index int) int {
 	fields[index] = Field{
 		name: name,
 		Type: Type,
@@ -99,14 +93,14 @@ func generateLine(fields map[int]Field) string {
 	return result
 }
 
-func generateField(Type FieldType, size int) string {
+func generateField(Type canonical.FieldType, size int) string {
 
 	switch Type {
-	case UUID:
+	case canonical.UUID:
 		value, _ := uuid.NewRandom()
 		return value.String()
 
-	case Number:
+	case canonical.Number:
 		result := make([]rune, size)
 
 		for i := range result {
@@ -115,7 +109,7 @@ func generateField(Type FieldType, size int) string {
 
 		return string(result)
 
-	case Text:
+	case canonical.Text:
 		result := make([]rune, size)
 
 		for i := range result {
@@ -123,16 +117,16 @@ func generateField(Type FieldType, size int) string {
 		}
 		return string(result)
 
-	case Date:
+	case canonical.Date:
 		day := rand.Intn(30) + 1
 		month := rand.Intn(9) + 1
 
 		return fmt.Sprintf("%d/0%d/2023", day, month)
 
-	case Timestamp:
+	case canonical.Timestamp:
 		return "2006-01-02T15:04:05.000-0700"
 
-	case Float:
+	case canonical.Float:
 		intValue := make([]rune, size)
 		decimalValue := make([]rune, 2)
 

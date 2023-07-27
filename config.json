@@ -1,0 +1,31 @@
+{
+  "filename" : "usuarios",
+  "totalLines" : 10,
+  "fields" : [
+    {
+      "name" : "Nome",
+      "type" : "TEXT",
+      "size" : 30
+    },
+    {
+      "name" : "Id",
+      "type" : "UUID",
+      "size" : 0
+    },
+    {
+      "name" : "Id",
+      "type" : "DATE",
+      "size" : 0
+    },
+    {
+      "name" : "data nascimento",
+      "type" : "DATE",
+      "size" : 0
+    },
+    {
+      "name" : "saldo",
+      "type" : "FLOAT",
+      "size" : 5
+    }
+  ]
+}
